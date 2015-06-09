@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>EaselJS: Tileset SpriteSheet Example</title>
+    <meta name="viewport" content="width=device-width">
+
+	<script src="js/underscore-min-1.6.js"></script>
+	<script src="js/easeljs-0.8.0.min.js"></script>
+	<!-- We also provide hosted minified versions of all CreateJS libraries.
+	  http://code.createjs.com -->
+
+	<script src="js/update.js"></script>
+
+	<script type="text/javascript">
+		var stage;
+		var tile = [];
+		var localCentreX, localCentreY;
+		var tileWidth = 512;
+
+		var StateEnum = { HiScore:0, Start:1, Playing:2 };
+		var game = { state:StateEnum.Start, resetView:false };
+		var input = { delta:0.0166, moveTarget:{x:0,y:0}, isBlasting:false };
+
+		function init() {
+			// create a new stage and point it at our canvas:
+			stage = new createjs.Stage("testCanvas");
+			createjs.Touch.enable(stage);
+
+			resizeListener();
+			window.addEventListener('resize', resizeListener);
+
+			// load the spritesheet image:
+			var image = new Image();
+			image.onload = handleLoad;
+			image.src = "assets/placeholder_tiles.png";
+		}
+		
+		function resizeListener() {
+			var windowWidth = window.innerWidth
+				|| document.documentElement.clientWidth
+				|| document.body.clientWidth;
+
+			var windowHeight = window.innerHeight
+				|| document.documentElement.clientHeight
+				|| document.body.clientHeight;
+
+			stage.canvas.width = windowWidth - 50;
+			stage.canvas.height = windowHeight - 50;
+
+			localCentreX = stage.canvas.width / 2;
+			localCentreY = stage.canvas.height / 2;
+		}
+
+		function handleLoad(evt) {
+			// define the spritesheet:
+			var ss = new createjs.SpriteSheet({
+					images: [evt.target],
+					frames: {width:tileWidth, height:tileWidth, regX:0, regY:0, spacing:0, margin:0}
+				});
+
+			// define a tile map:
+			var map = [1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3,
+			           4, 5, 6, 4, 5, 6, 4, 5, 6, 4, 5, 6,
+			           1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3,
+			           4, 5, 6, 4, 5, 6, 4, 5, 6, 4, 5, 6,
+			           1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3,
+			           4, 5, 6, 4, 5, 6, 4, 5, 6, 4, 5, 6
+			           ];
+			
+			// draw the map:
+			tileIdx = 0;
+			for (var row=0; row<6; row++) {
+				for (var col=0; col<12; col++) {
+					var idx = map[(row*12)+col] - 1;
+
+					tile[tileIdx] = new createjs.Sprite(ss);
+					tile[tileIdx].gotoAndStop(idx);
+					stage.addChild(tile[tileIdx]);
+					tileIdx++;
+				}
+			}
+
+			// initial setup of game object
+			game = update(game, input);
+			
+			// load player and add after tiles so it appears on top
+			var bmpPlayer = new createjs.Bitmap("assets/player.png");
+			bmpPlayer.regX = 125;
+			bmpPlayer.regY = 125;
+			bmpPlayer.rotation = 90;
+			stage.addChild(bmpPlayer);
+			game.player.viewObject = bmpPlayer;
+
+			createjs.Ticker.timingMode = createjs.Ticker.RAF;
+			createjs.Ticker.addEventListener("tick", tick);
+
+			stage.on("stagemousedown", onMouseDown);
+			stage.on("stagemouseup", onMouseUp);
+			stage.on("stagemousemove", onMouseMove);
+		}
+
+        function worldToLocal(x, y, worldPlayerX, worldPlayerY)
+        {
+        	X = (x - worldPlayerX) + localCentreX;
+        	Y = (y - worldPlayerY) + localCentreY;
+
+        	return { x:X, y:Y };
+        }
+
+        function localToWorld(x, y, worldPlayerX, worldPlayerY)
+        {
+        	X = (x - localCentreX) + worldPlayerX;
+        	Y = (y - localCentreY) + worldPlayerY;
+
+        	return { x:X, y:Y };
+        }
+
+        var firstPass = true;
+        var mousedown = false;
+
+
+        function onMouseDown(mouseEvent)
+        {
+        	firstPass = true;
+        	mousedown = true;
+        	input.moveTarget.x = localToWorld(mouseEvent.stageX, mouseEvent.stageY, game.player.x, game.player.y).x;
+        	input.moveTarget.y = localToWorld(mouseEvent.stageX, mouseEvent.stageY, game.player.x, game.player.y).y;
+        }
+
+        function onMouseUp(mouseEvent)
+        {
+        	mousedown = false;
+        }
+
+        function onMouseMove(mouseEvent)
+        {
+        	if (mousedown)
+        	{
+	        	input.moveTarget.x = localToWorld(mouseEvent.stageX, mouseEvent.stageY, game.player.x, game.player.y).x;
+	        	input.moveTarget.y = localToWorld(mouseEvent.stageX, mouseEvent.stageY, game.player.x, game.player.y).y;
+			}
+    	};
+
+		function tick(event)
+		{
+			var deltaS = event.delta / 1000;
+			input.delta = deltaS;
+
+			document.getElementById('fps').innerText = Math.round(createjs.Ticker.getMeasuredFPS());
+
+			game = update(game, input);
+
+			tileIdx = 0;
+			for (var row=0; row<6; row++) {
+				for (var col=0; col<12; col++) {
+					worldx = tileWidth * col;
+					worldy = tileWidth * row;
+					tile[tileIdx].x = worldToLocal(worldx, worldy, game.player.x, game.player.y).x;
+					tile[tileIdx].y = worldToLocal(worldy, worldy, game.player.x, game.player.y).y;
+					tileIdx++;
+				}
+			}
+
+			game.player.viewObject.x = localCentreX;
+			game.player.viewObject.y = localCentreY;
+			game.player.viewObject.rotation = game.player.rotation;
+
+			stage.update(event);
+		}
+
+	</script>
+</head>
+
+<body onload="init();">
+	<div align="center">
+		<canvas id="testCanvas"></canvas>
+		<p><span id="fps"></span> FPS</p>
+	</div>
+</body>
+</html>
