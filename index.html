@@ -19,7 +19,7 @@
 
 		var StateEnum = { HiScore:0, Start:1, Playing:2 };
 		var game = { state:StateEnum.Start, resetView:false };
-		var input = { delta:0.0166, moveTarget:{x:0,y:0}, isBlasting:false };
+		var input = { delta:0.0166, thrustTarget:{x:0,y:0}, isBlasting:false };
 
 		function init() {
 			// create a new stage and point it at our canvas:
@@ -75,6 +75,11 @@
 
 					tile[tileIdx] = new createjs.Sprite(ss);
 					tile[tileIdx].gotoAndStop(idx);
+					worldx = tileWidth * (col-6);
+					worldy = tileWidth * (row-3);
+					tile[tileIdx].x = worldToLocal(worldx, worldy).x;
+					tile[tileIdx].y = worldToLocal(worldy, worldy).y;
+
 					stage.addChild(tile[tileIdx]);
 					tileIdx++;
 				}
@@ -91,6 +96,15 @@
 			stage.addChild(bmpPlayer);
 			game.player.viewObject = bmpPlayer;
 
+			_.each( game.meteor, function(m) {
+				var bmpMeteor = new createjs.Bitmap("assets/meteor_large.png");
+				bmpMeteor.regX = 125;
+				bmpMeteor.regY = 125;
+				bmpMeteor.rotation = 90;
+				stage.addChild(bmpMeteor);
+				m.viewObject = bmpMeteor;
+			});
+
 			createjs.Ticker.timingMode = createjs.Ticker.RAF;
 			createjs.Ticker.addEventListener("tick", tick);
 
@@ -99,18 +113,18 @@
 			stage.on("stagemousemove", onMouseMove);
 		}
 
-        function worldToLocal(x, y, worldPlayerX, worldPlayerY)
+        function worldToLocal(x, y)
         {
-        	X = (x - worldPlayerX) + localCentreX;
-        	Y = (y - worldPlayerY) + localCentreY;
+        	X = x + localCentreX;
+        	Y = y + localCentreY;
 
         	return { x:X, y:Y };
         }
 
-        function localToWorld(x, y, worldPlayerX, worldPlayerY)
+        function localToWorld(x, y)
         {
-        	X = (x - localCentreX) + worldPlayerX;
-        	Y = (y - localCentreY) + worldPlayerY;
+        	X = x - localCentreX;
+        	Y = y - localCentreY;
 
         	return { x:X, y:Y };
         }
@@ -123,12 +137,14 @@
         {
         	firstPass = true;
         	mousedown = true;
-        	input.moveTarget.x = localToWorld(mouseEvent.stageX, mouseEvent.stageY, game.player.x, game.player.y).x;
-        	input.moveTarget.y = localToWorld(mouseEvent.stageX, mouseEvent.stageY, game.player.x, game.player.y).y;
+        	input.thrustTarget.x = localToWorld(mouseEvent.stageX, mouseEvent.stageY).x;
+        	input.thrustTarget.y = localToWorld(mouseEvent.stageX, mouseEvent.stageY).y;
         }
 
         function onMouseUp(mouseEvent)
         {
+        	input.thrustTarget.x = 0;
+        	input.thrustTarget.y = 0;
         	mousedown = false;
         }
 
@@ -136,8 +152,8 @@
         {
         	if (mousedown)
         	{
-	        	input.moveTarget.x = localToWorld(mouseEvent.stageX, mouseEvent.stageY, game.player.x, game.player.y).x;
-	        	input.moveTarget.y = localToWorld(mouseEvent.stageX, mouseEvent.stageY, game.player.x, game.player.y).y;
+	        	input.thrustTarget.x = localToWorld(mouseEvent.stageX, mouseEvent.stageY).x;
+	        	input.thrustTarget.y = localToWorld(mouseEvent.stageX, mouseEvent.stageY).y;
 			}
     	};
 
@@ -153,10 +169,10 @@
 			tileIdx = 0;
 			for (var row=0; row<6; row++) {
 				for (var col=0; col<12; col++) {
-					worldx = tileWidth * col;
-					worldy = tileWidth * row;
-					tile[tileIdx].x = worldToLocal(worldx, worldy, game.player.x, game.player.y).x;
-					tile[tileIdx].y = worldToLocal(worldy, worldy, game.player.x, game.player.y).y;
+					tile[tileIdx].x -= game.velocity.x;
+					tile[tileIdx].y -= game.velocity.y;
+					tile[tileIdx].x %= 1023;
+					tile[tileIdx].y %= 1023;
 					tileIdx++;
 				}
 			}
@@ -164,6 +180,12 @@
 			game.player.viewObject.x = localCentreX;
 			game.player.viewObject.y = localCentreY;
 			game.player.viewObject.rotation = game.player.rotation;
+
+			_.each( game.meteor, function(m) {
+				m.viewObject.x = worldToLocal(m.x, m.y).x;
+				m.viewObject.y = worldToLocal(m.x, m.y).y;
+				m.viewObject.rotation = m.rotation;
+			});
 
 			stage.update(event);
 		}
