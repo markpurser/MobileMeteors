@@ -19,7 +19,7 @@
 
 		var StateEnum = { HiScore:0, Start:1, Playing:2 };
 		var game = { state:StateEnum.Start, resetView:false };
-		var input = { delta:0.0166, thrustTarget:{x:0,y:0}, isBlasting:false };
+		var input = { delta:0.0166, location:{x:0,y:0}, direction:0, isBlasting:false };
 
 		function init() {
 			// create a new stage and point it at our canvas:
@@ -113,49 +113,60 @@
 			stage.on("stagemousemove", onMouseMove);
 		}
 
-        function worldToLocal(x, y)
-        {
-        	X = x + localCentreX;
-        	Y = y + localCentreY;
+    function worldToLocal(x, y)
+    {
+    	X = x + localCentreX;
+    	Y = y + localCentreY;
 
-        	return { x:X, y:Y };
-        }
+    	return { x:X, y:Y };
+    }
 
-        function localToWorld(x, y)
-        {
-        	X = x - localCentreX;
-        	Y = y - localCentreY;
+    function localToWorld(x, y)
+    {
+    	X = x - localCentreX;
+    	Y = y - localCentreY;
 
-        	return { x:X, y:Y };
-        }
+    	return { x:X, y:Y };
+    }
 
-        var firstPass = true;
-        var mousedown = false;
+    var firstPass = true;
+    var mousedown = false;
 
 
-        function onMouseDown(mouseEvent)
-        {
-        	firstPass = true;
-        	mousedown = true;
-        	input.thrustTarget.x = localToWorld(mouseEvent.stageX, mouseEvent.stageY).x;
-        	input.thrustTarget.y = localToWorld(mouseEvent.stageX, mouseEvent.stageY).y;
-        }
+    function onMouseDown(mouseEvent)
+    {
+    	firstPass = true;
+    	mousedown = true;
+      var x = localToWorld(mouseEvent.stageX, mouseEvent.stageY).x;
+      var y = localToWorld(mouseEvent.stageX, mouseEvent.stageY).y;
+      input.location.x = x;
+      input.location.y = y;
+      input.direction = Math.atan2(x, y);
+      if( Math.sqrt( x*x + y*y ) >= 200 )
+      {
+        input.isBlasting = true;
+      }
+    }
 
-        function onMouseUp(mouseEvent)
-        {
-        	input.thrustTarget.x = 0;
-        	input.thrustTarget.y = 0;
-        	mousedown = false;
-        }
+    function onMouseUp(mouseEvent)
+    {
+    	input.location.x = 0;
+    	input.location.y = 0;
+      input.isBlasting = false;
+    	mousedown = false;
+    }
 
-        function onMouseMove(mouseEvent)
-        {
-        	if (mousedown)
-        	{
-	        	input.thrustTarget.x = localToWorld(mouseEvent.stageX, mouseEvent.stageY).x;
-	        	input.thrustTarget.y = localToWorld(mouseEvent.stageX, mouseEvent.stageY).y;
-			}
-    	};
+    function onMouseMove(mouseEvent)
+    {
+    	if (mousedown)
+    	{
+        var x = localToWorld(mouseEvent.stageX, mouseEvent.stageY).x;
+        var y = localToWorld(mouseEvent.stageX, mouseEvent.stageY).y;
+        input.location.x = x;
+        input.location.y = y;
+        input.direction = Math.atan2(x, y);
+      }
+    }
 
 		function tick(event)
 		{
@@ -186,6 +197,32 @@
 				m.viewObject.y = worldToLocal(m.x, m.y).y;
 				m.viewObject.rotation = m.rotation;
 			});
+
+      var index = 0;
+      _.each( game.gunfire, function(g) {
+        if( g.viewAdd )
+        {
+          var bmpGunfire = new createjs.Bitmap("assets/gunfire.png");
+          bmpGunfire.regX = 25;
+          bmpGunfire.regY = 25;
+          stage.addChild(bmpGunfire);
+          g.viewObject = bmpGunfire;
+          g.viewAdd = false;
+        }
+        g.viewObject.x = worldToLocal(g.x, g.y).x;
+        g.viewObject.y = worldToLocal(g.x, g.y).y;
+        g.viewObject.rotation = 180 - (g.direction * 180 / Math.PI);
+        if( g.viewRemove )
+        {
+          stage.removeChild(g.viewObject);
+          g.viewRemove = false;
+          game.gunfire.splice(index,1);
+        }
+        else
+        {
+          index++;
+        }
+      });
 
 			stage.update(event);
 		}
