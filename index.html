@@ -19,7 +19,7 @@
 
 		var StateEnum = { HiScore:0, Start:1, Playing:2 };
 		var game = { state:StateEnum.Start, resetView:false };
-		var input = { delta:0.0166, location:{x:0,y:0}, direction:0, isBlasting:false };
+		var input = { delta:0.0166, location:{x:0,y:0}, direction:0, move:false, blast:false };
 
 		function init() {
 			// create a new stage and point it at our canvas:
@@ -96,15 +96,6 @@
 			stage.addChild(bmpPlayer);
 			game.player.viewObject = bmpPlayer;
 
-			_.each( game.meteor, function(m) {
-				var bmpMeteor = new createjs.Bitmap("assets/meteor_large.png");
-				bmpMeteor.regX = 125;
-				bmpMeteor.regY = 125;
-				bmpMeteor.rotation = 90;
-				stage.addChild(bmpMeteor);
-				m.viewObject = bmpMeteor;
-			});
-
 			createjs.Ticker.timingMode = createjs.Ticker.RAF;
 			createjs.Ticker.addEventListener("tick", tick);
 
@@ -129,30 +120,29 @@
     	return { x:X, y:Y };
     }
 
-    var firstPass = true;
     var mousedown = false;
-
 
     function onMouseDown(mouseEvent)
     {
-    	firstPass = true;
+		var x = localToWorld(mouseEvent.stageX, mouseEvent.stageY).x;
+		var y = localToWorld(mouseEvent.stageX, mouseEvent.stageY).y;
+		input.location.x = x;
+		input.location.y = y;
+		input.direction = Math.atan2(x, y);
+		if( Math.sqrt( x*x + y*y ) >= 200 )
+		{
+			input.blast = true;
+		}
+		else {
+			input.move = true;
+		}
     	mousedown = true;
-      var x = localToWorld(mouseEvent.stageX, mouseEvent.stageY).x;
-      var y = localToWorld(mouseEvent.stageX, mouseEvent.stageY).y;
-      input.location.x = x;
-      input.location.y = y;
-      input.direction = Math.atan2(x, y);
-      if( Math.sqrt( x*x + y*y ) >= 200 )
-      {
-        input.isBlasting = true;
-      }
     }
 
     function onMouseUp(mouseEvent)
     {
-    	input.location.x = 0;
-    	input.location.y = 0;
-      input.isBlasting = false;
+    	input.move = false;
+		input.blast = false;
     	mousedown = false;
     }
 
@@ -160,72 +150,105 @@
     {
     	if (mousedown)
     	{
-        var x = localToWorld(mouseEvent.stageX, mouseEvent.stageY).x;
-        var y = localToWorld(mouseEvent.stageX, mouseEvent.stageY).y;
-        input.location.x = x;
-        input.location.y = y;
-        input.direction = Math.atan2(x, y);
-      }
+			var x = localToWorld(mouseEvent.stageX, mouseEvent.stageY).x;
+			var y = localToWorld(mouseEvent.stageX, mouseEvent.stageY).y;
+			input.location.x = x;
+			input.location.y = y;
+			input.direction = Math.atan2(x, y);
+		}
     }
 
-		function tick(event)
-		{
-			var deltaS = event.delta / 1000;
-			input.delta = deltaS;
+	function tick(event)
+	{
+		var deltaS = event.delta / 1000;
+		input.delta = deltaS;
 
-			document.getElementById('fps').innerText = Math.round(createjs.Ticker.getMeasuredFPS());
+		document.getElementById('fps').innerText = Math.round(createjs.Ticker.getMeasuredFPS());
 
-			game = update(game, input);
+		game = update(game, input);
 
-			tileIdx = 0;
-			for (var row=0; row<6; row++) {
-				for (var col=0; col<12; col++) {
-					tile[tileIdx].x -= game.velocity.x;
-					tile[tileIdx].y -= game.velocity.y;
-					tile[tileIdx].x %= 1023;
-					tile[tileIdx].y %= 1023;
-					tileIdx++;
-				}
+		tileIdx = 0;
+		for (var row=0; row<6; row++) {
+			for (var col=0; col<12; col++) {
+				tile[tileIdx].x -= game.velocity.x;
+				tile[tileIdx].y -= game.velocity.y;
+				tile[tileIdx].x %= 1023;
+				tile[tileIdx].y %= 1023;
+				tileIdx++;
 			}
-
-			game.player.viewObject.x = localCentreX;
-			game.player.viewObject.y = localCentreY;
-			game.player.viewObject.rotation = game.player.rotation;
-
-			_.each( game.meteor, function(m) {
-				m.viewObject.x = worldToLocal(m.x, m.y).x;
-				m.viewObject.y = worldToLocal(m.x, m.y).y;
-				m.viewObject.rotation = m.rotation;
-			});
-
-      var index = 0;
-      _.each( game.gunfire, function(g) {
-        if( g.viewAdd )
-        {
-          var bmpGunfire = new createjs.Bitmap("assets/gunfire.png");
-          bmpGunfire.regX = 25;
-          bmpGunfire.regY = 25;
-          stage.addChild(bmpGunfire);
-          g.viewObject = bmpGunfire;
-          g.viewAdd = false;
-        }
-        g.viewObject.x = worldToLocal(g.x, g.y).x;
-        g.viewObject.y = worldToLocal(g.x, g.y).y;
-        g.viewObject.rotation = 180 - (g.direction * 180 / Math.PI);
-        if( g.viewRemove )
-        {
-          stage.removeChild(g.viewObject);
-          g.viewRemove = false;
-          game.gunfire.splice(index,1);
-        }
-        else
-        {
-          index++;
-        }
-      });
-
-			stage.update(event);
 		}
+
+		game.player.viewObject.x = localCentreX;
+		game.player.viewObject.y = localCentreY;
+		game.player.viewObject.rotation = game.player.rotation;
+
+		var index = 0;
+		_.each( game.gunfire, function(g) {
+			if( g.viewAdd )
+			{
+				var bmpGunfire = new createjs.Bitmap("assets/gunfire.png");
+				bmpGunfire.regX = 25;
+				bmpGunfire.regY = 25;
+				stage.addChild(bmpGunfire);
+				g.viewObject = bmpGunfire;
+				g.viewAdd = false;
+			}
+			g.viewObject.x = worldToLocal(g.x, g.y).x;
+			g.viewObject.y = worldToLocal(g.x, g.y).y;
+			g.viewObject.rotation = 180 - (g.direction * 180 / Math.PI);
+			if( g.viewRemove )
+			{
+				//TODO look at ordering of following lines
+				stage.removeChild(g.viewObject);
+				g.viewRemove = false;
+				game.gunfire.splice(index,1);
+			}
+			else
+			{
+				index++;
+			}
+		});
+
+		index = 0;
+		_.each( game.meteor, function(m) {
+			if( m.viewAdd )
+			{
+				var bmpMeteor = new createjs.Bitmap("assets/meteor_large.png");
+				bmpMeteor.regX = 125;
+				bmpMeteor.regY = 125;
+				bmpMeteor.rotation = 90;
+				stage.addChild(bmpMeteor);
+				m.viewObject = bmpMeteor;
+				m.viewAdd = false;
+			}
+			m.viewObject.x = worldToLocal(m.x, m.y).x;
+			m.viewObject.y = worldToLocal(m.x, m.y).y;
+			m.viewObject.rotation = m.rotation;
+			if( m.size == 2 )
+			{
+				m.viewObject.scaleX = 0.5;
+				m.viewObject.scaleY = 0.5;
+			}
+			if( m.size == 1 )
+			{
+				m.viewObject.scaleX = 0.25;
+				m.viewObject.scaleY = 0.25;
+			}
+			if( m.viewRemove )
+			{
+				//TODO look at ordering of following lines
+				stage.removeChild(m.viewObject);
+				m.viewRemove = false;
+				game.meteor.splice(index,1);
+			}
+			else
+			{
+				index++;
+			}
+		});
+
+		stage.update(event);
+	}
 
 	</script>
 </head>

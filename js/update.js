@@ -13,6 +13,8 @@ function update(game, input)
 		game.player = updatePlayer(game.player, game.velocity, input);
 		game.meteor = updateMeteor(game.meteor, game.velocity);
 		game.gunfire = updateGunfire(game.gunfire, game.player, game.velocity, input);
+		gunfireCollisions = getGunfireCollisions(game.meteor, game.gunfire);
+		game.meteor = processGunfireCollisions(gunfireCollisions, game.meteor);
 	}
 
 	game.state = updateState(game.state);
@@ -35,8 +37,8 @@ function resetGame()
 	var velocity = { x:0, y:0 };
 	var player = { x:0, y:0, rotation:0, direction:0, targetx:0, targety:0, alive:true, score:0, lives:3, viewAdd:true, viewRemove:false };
 	var meteor = [
-				{ x:0, y:0, size:5, speed:1, direction:_.sample([0,Math.PI*.5,Math.PI,Math.PI*1.5]), rotation:0, rotationSpeed:-0.5, viewAdd:true, viewRemove:false },
-				{ x:0, y:0, size:5, speed:2, direction:_.sample([0,Math.PI*.5,Math.PI,Math.PI*1.5]), rotation:90, rotationSpeed:0.8, viewAdd:true, viewRemove:false },
+				{ x:0, y:0, size:3, speed:1, direction:Math.random()*Math.PI*2, rotation:0, rotationSpeed:-0.5, viewAdd:true, viewRemove:false },
+				{ x:0, y:0, size:3, speed:2, direction:Math.random()*Math.PI*2, rotation:90, rotationSpeed:0.8, viewAdd:true, viewRemove:false },
 				];
 	var gunfire = [];
 	return { state:StateEnum.Start, velocity:velocity, player:player, meteor:meteor, gunfire:gunfire, resetView:true };
@@ -44,20 +46,14 @@ function resetGame()
 
 function updateVelocity(velocity, input)
 {
-	if( input.location.x != 0 && !input.isBlasting )
+	if( input.move )
 	{
 		velocity.x = input.location.x * 0.1;
-	}
-	else
-	{
-		velocity.x *= 0.9;
-	}
-	if( input.location.y != 0 && !input.isBlasting )
-	{
 		velocity.y = input.location.y * 0.1;
 	}
 	else
 	{
+		velocity.x *= 0.9;
 		velocity.y *= 0.9;
 	}
 
@@ -66,7 +62,7 @@ function updateVelocity(velocity, input)
 
 function updatePlayer(player, velocity, input)
 {
-  var easeRotation = 0.2;
+	var easeRotation = 0.2;
 	player.direction = 180 - (input.direction * 180 / Math.PI);
 	player.rotation += (player.direction - player.rotation) * easeRotation;
 
@@ -92,13 +88,14 @@ function updateMeteor(meteor, velocity)
 
 function updateGunfire(gunfire, player, velocity, input)
 {
-  if( input.isBlasting )
-  {
-  	gunfire.push({ x:player.x, y:player.y, direction:input.direction, life:2, viewAdd:true, viewRemove:false });
-  }
+	if( input.blast )
+	{
+		gunfire.push({ x:player.x, y:player.y, direction:input.direction, life:2, viewAdd:true, viewRemove:false });
+		input.blast = false;
+	}
 
 	_.each( gunfire, function(g) {
-		var speed = 5;
+		var speed = 20;
 		g.x += Math.sin(g.direction) * speed;
 		g.y += Math.cos(g.direction) * speed;
 		g.x -= velocity.x;
@@ -115,4 +112,47 @@ function updateGunfire(gunfire, player, velocity, input)
 	});
 
 	return gunfire;
+}
+
+function getGunfireCollisions(meteor, gunfire)
+{
+	collisions = [];
+
+	_.each( meteor, function(m) {
+
+		if(m.viewObject) {
+			var bounds = m.viewObject.getBounds();
+			mleft = m.x - bounds.width/2;
+			mright = m.x + bounds.width/2;
+			mtop = m.y - bounds.height/2;
+			mbottom = m.y + bounds.height/2;
+
+			_.each( gunfire, function(g) {
+				if(g.x > mleft && g.x < mright && g.y > mtop && g.y < mbottom) {
+					collisions.push({ meteor:m, gunfire:g });
+				}
+			});
+		}
+
+	});
+
+	return collisions;
+}
+
+function processGunfireCollisions(collisions, meteor)
+{
+	_.each( collisions, function(c) {
+
+		c.meteor.viewRemove = true;
+		c.gunfire.viewRemove = true;
+
+		if( c.meteor.size > 1 )
+		{
+			meteor.push({ x:c.meteor.x, y:c.meteor.y, size:c.meteor.size-1, speed:c.meteor.speed+1, direction:Math.random()*Math.PI*2, rotation:0, rotationSpeed:-0.5, viewAdd:true, viewRemove:false })
+			meteor.push({ x:c.meteor.x, y:c.meteor.y, size:c.meteor.size-1, speed:c.meteor.speed+1, direction:Math.random()*Math.PI*2, rotation:0, rotationSpeed:-0.5, viewAdd:true, viewRemove:false })
+			meteor.push({ x:c.meteor.x, y:c.meteor.y, size:c.meteor.size-1, speed:c.meteor.speed+1, direction:Math.random()*Math.PI*2, rotation:0, rotationSpeed:-0.5, viewAdd:true, viewRemove:false })
+		}
+	});
+
+	return meteor;
 }
