@@ -18,7 +18,7 @@
 		var tileWidth = 512;
 
 		var StateEnum = { HiScore:0, Start:1, Playing:2 };
-		var game = { state:StateEnum.Start, resetView:false };
+		var game = { state:StateEnum.Start, resetView:false, halt:false };
 		var input = { delta:0.0166, location:{x:0,y:0}, direction:0, move:false, blast:false };
 
 		function init() {
@@ -88,6 +88,15 @@
 			// initial setup of game object
 			game = update(game, input);
 			
+			// load move control and add after tiles so it appears on top
+			var bmpMoveControl = new createjs.Bitmap("assets/move_control.png");
+			bmpMoveControl.regX = 200;
+			bmpMoveControl.regY = 200;
+			bmpMoveControl.x = worldToLocal(0, 0).x;
+			bmpMoveControl.y = worldToLocal(0, 0).y;
+			bmpMoveControl.rotation = 0;
+			stage.addChild(bmpMoveControl);
+
 			// load player and add after tiles so it appears on top
 			var bmpPlayer = new createjs.Bitmap("assets/player.png");
 			bmpPlayer.regX = 125;
@@ -160,6 +169,8 @@
 
 	function tick(event)
 	{
+		if( game.halt ) return;
+
 		var deltaS = event.delta / 1000;
 		input.delta = deltaS;
 
@@ -172,8 +183,10 @@
 			for (var col=0; col<12; col++) {
 				tile[tileIdx].x -= game.velocity.x;
 				tile[tileIdx].y -= game.velocity.y;
-				tile[tileIdx].x %= 1023;
-				tile[tileIdx].y %= 1023;
+				if(tile[tileIdx].x < 2048) tile[tileIdx].x += 4096;
+				if(tile[tileIdx].x > 2048) tile[tileIdx].x -= 4096;
+				if(tile[tileIdx].y < 1024) tile[tileIdx].y += 2048;
+				if(tile[tileIdx].y > 1024) tile[tileIdx].y -= 2048;
 				tileIdx++;
 			}
 		}

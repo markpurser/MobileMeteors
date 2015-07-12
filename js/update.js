@@ -15,6 +15,11 @@ function update(game, input)
 		game.gunfire = updateGunfire(game.gunfire, game.player, game.velocity, input);
 		gunfireCollisions = getGunfireCollisions(game.meteor, game.gunfire);
 		game.meteor = processGunfireCollisions(gunfireCollisions, game.meteor);
+
+		if( getPlayerCollisions(game.player, game.meteor) )
+		{
+			game.halt = true;
+		}
 	}
 
 	game.state = updateState(game.state);
@@ -37,8 +42,9 @@ function resetGame()
 	var velocity = { x:0, y:0 };
 	var player = { x:0, y:0, rotation:0, direction:0, targetx:0, targety:0, alive:true, score:0, lives:3, viewAdd:true, viewRemove:false };
 	var meteor = [
-				{ x:0, y:0, size:3, speed:1, direction:Math.random()*Math.PI*2, rotation:0, rotationSpeed:-0.5, viewAdd:true, viewRemove:false },
-				{ x:0, y:0, size:3, speed:2, direction:Math.random()*Math.PI*2, rotation:90, rotationSpeed:0.8, viewAdd:true, viewRemove:false },
+				{ x:Math.random()*1600-800, y:Math.random()*1600-800, size:3, speed:1, direction:Math.random()*Math.PI*2, rotation:0, rotationSpeed:-0.5, viewAdd:true, viewRemove:false },
+				{ x:Math.random()*1600-800, y:Math.random()*1600-800, size:3, speed:2, direction:Math.random()*Math.PI*2, rotation:90, rotationSpeed:0.8, viewAdd:true, viewRemove:false },
+				{ x:Math.random()*1600-800, y:Math.random()*1600-800, size:3, speed:2, direction:Math.random()*Math.PI*2, rotation:180, rotationSpeed:0.2, viewAdd:true, viewRemove:false },
 				];
 	var gunfire = [];
 	return { state:StateEnum.Start, velocity:velocity, player:player, meteor:meteor, gunfire:gunfire, resetView:true };
@@ -122,10 +128,10 @@ function getGunfireCollisions(meteor, gunfire)
 
 		if(m.viewObject) {
 			var bounds = m.viewObject.getBounds();
-			mleft = m.x - bounds.width/2;
-			mright = m.x + bounds.width/2;
-			mtop = m.y - bounds.height/2;
-			mbottom = m.y + bounds.height/2;
+			mleft = m.x - bounds.width/4;
+			mright = m.x + bounds.width/4;
+			mtop = m.y - bounds.height/4;
+			mbottom = m.y + bounds.height/4;
 
 			_.each( gunfire, function(g) {
 				if(g.x > mleft && g.x < mright && g.y > mtop && g.y < mbottom) {
@@ -156,3 +162,27 @@ function processGunfireCollisions(collisions, meteor)
 
 	return meteor;
 }
+
+function getPlayerCollisions(player, meteor)
+{
+	collision = false;
+
+	_.each( meteor, function(m) {
+
+		if(m.viewObject) {
+			var bounds = m.viewObject.getBounds();
+			mleft = m.x - bounds.width/4;
+			mright = m.x + bounds.width/4;
+			mtop = m.y - bounds.height/4;
+			mbottom = m.y + bounds.height/4;
+
+			if(player.x > mleft && player.x < mright && player.y > mtop && player.y < mbottom) {
+				collision = true;
+			}
+		}
+
+	});
+
+	return collision;
+}
+
