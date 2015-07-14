@@ -16,6 +16,8 @@
 		var tile = [];
 		var localCentreX, localCentreY;
 		var tileWidth = 512;
+		var windowScale = 1.0;
+		var bmpMoveControl;
 
 		var StateEnum = { HiScore:0, Start:1, Playing:2 };
 		var game = { state:StateEnum.Start, resetView:false, halt:false };
@@ -43,6 +45,9 @@
 			var windowHeight = window.innerHeight
 				|| document.documentElement.clientHeight
 				|| document.body.clientHeight;
+
+			var principleLength = windowWidth > windowHeight ? windowWidth : windowHeight;
+			windowScale = principleLength / 1920;
 
 			stage.canvas.width = windowWidth - 50;
 			stage.canvas.height = windowHeight - 50;
@@ -79,6 +84,7 @@
 					worldy = tileWidth * (row-3);
 					tile[tileIdx].x = worldToLocal(worldx, worldy).x;
 					tile[tileIdx].y = worldToLocal(worldy, worldy).y;
+					tile[tileIdx].scaleX = tile[tileIdx].scaleY = windowScale;
 
 					stage.addChild(tile[tileIdx]);
 					tileIdx++;
@@ -89,11 +95,9 @@
 			game = update(game, input);
 			
 			// load move control and add after tiles so it appears on top
-			var bmpMoveControl = new createjs.Bitmap("assets/move_control.png");
+			bmpMoveControl = new createjs.Bitmap("assets/move_control.png");
 			bmpMoveControl.regX = 200;
 			bmpMoveControl.regY = 200;
-			bmpMoveControl.x = worldToLocal(0, 0).x;
-			bmpMoveControl.y = worldToLocal(0, 0).y;
 			bmpMoveControl.rotation = 0;
 			stage.addChild(bmpMoveControl);
 
@@ -115,18 +119,23 @@
 
     function worldToLocal(x, y)
     {
-    	X = x + localCentreX;
-    	Y = y + localCentreY;
+    	X = ( x * windowScale ) + localCentreX;
+    	Y = ( y * windowScale ) + localCentreY;
 
     	return { x:X, y:Y };
     }
 
     function localToWorld(x, y)
     {
-    	X = x - localCentreX;
-    	Y = y - localCentreY;
+    	X = ( x - localCentreX ) / windowScale;
+    	Y = ( y - localCentreY ) / windowScale;
 
     	return { x:X, y:Y };
+    }
+
+    function scalarWorldToLocal(scalar)
+    {
+    	return scalar * windowScale;
     }
 
     var mousedown = false;
@@ -178,21 +187,27 @@
 
 		game = update(game, input);
 
+		bmpMoveControl.x = worldToLocal(0, 0).x;
+		bmpMoveControl.y = worldToLocal(0, 0).y;
+		bmpMoveControl.scaleX = bmpMoveControl.scaleY = windowScale;
+
 		tileIdx = 0;
 		for (var row=0; row<6; row++) {
 			for (var col=0; col<12; col++) {
 				tile[tileIdx].x -= game.velocity.x;
 				tile[tileIdx].y -= game.velocity.y;
-				if(tile[tileIdx].x < 2048) tile[tileIdx].x += 4096;
-				if(tile[tileIdx].x > 2048) tile[tileIdx].x -= 4096;
-				if(tile[tileIdx].y < 1024) tile[tileIdx].y += 2048;
-				if(tile[tileIdx].y > 1024) tile[tileIdx].y -= 2048;
+				if(tile[tileIdx].x < scalarWorldToLocal(2048)) tile[tileIdx].x += scalarWorldToLocal(4096);
+				if(tile[tileIdx].x > scalarWorldToLocal(2048)) tile[tileIdx].x -= scalarWorldToLocal(4096);
+				if(tile[tileIdx].y < scalarWorldToLocal(1024)) tile[tileIdx].y += scalarWorldToLocal(2048);
+				if(tile[tileIdx].y > scalarWorldToLocal(1024)) tile[tileIdx].y -= scalarWorldToLocal(2048);
+				tile[tileIdx].scaleX = tile[tileIdx].scaleY = windowScale;
 				tileIdx++;
 			}
 		}
 
-		game.player.viewObject.x = localCentreX;
-		game.player.viewObject.y = localCentreY;
+		game.player.viewObject.x = worldToLocal(0, 0).x;
+		game.player.viewObject.y = worldToLocal(0, 0).y;
+		game.player.viewObject.scaleX = game.player.viewObject.scaleY = windowScale;
 		game.player.viewObject.rotation = game.player.rotation;
 
 		var index = 0;
@@ -208,6 +223,7 @@
 			}
 			g.viewObject.x = worldToLocal(g.x, g.y).x;
 			g.viewObject.y = worldToLocal(g.x, g.y).y;
+			g.viewObject.scaleX = g.viewObject.scaleY = windowScale;
 			g.viewObject.rotation = 180 - (g.direction * 180 / Math.PI);
 			if( g.viewRemove )
 			{
@@ -236,16 +252,17 @@
 			}
 			m.viewObject.x = worldToLocal(m.x, m.y).x;
 			m.viewObject.y = worldToLocal(m.x, m.y).y;
+			m.viewObject.scaleX = m.viewObject.scaleY = windowScale;
 			m.viewObject.rotation = m.rotation;
 			if( m.size == 2 )
 			{
-				m.viewObject.scaleX = 0.5;
-				m.viewObject.scaleY = 0.5;
+				m.viewObject.scaleX = 0.5 * windowScale;
+				m.viewObject.scaleY = 0.5 * windowScale;
 			}
 			if( m.size == 1 )
 			{
-				m.viewObject.scaleX = 0.25;
-				m.viewObject.scaleY = 0.25;
+				m.viewObject.scaleX = 0.25 * windowScale;
+				m.viewObject.scaleY = 0.25 * windowScale;
 			}
 			if( m.viewRemove )
 			{

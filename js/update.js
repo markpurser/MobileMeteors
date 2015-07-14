@@ -82,10 +82,10 @@ function updateMeteor(meteor, velocity)
 		m.y += Math.cos(m.direction) * m.speed;
 		m.x -= velocity.x;
 		m.y -= velocity.y;
-		if( m.x >= 512 ) m.x -= 1023;
-		if( m.x <= -512) m.x += 1023;
-		if( m.y >= 512 ) m.y -= 1023;
-		if( m.y <= -512) m.y += 1023;
+		if( m.x >= 1024 ) m.x -= 2047;
+		if( m.x <= -1024) m.x += 2047;
+		if( m.y >= 1024 ) m.y -= 2047;
+		if( m.y <= -1024) m.y += 2047;
 		m.rotation += m.rotationSpeed;
 	});
 
@@ -106,10 +106,10 @@ function updateGunfire(gunfire, player, velocity, input)
 		g.y += Math.cos(g.direction) * speed;
 		g.x -= velocity.x;
 		g.y -= velocity.y;
-		if( g.x >= 512 ) g.x -= 1023;
-		if( g.x <= -512) g.x += 1023;
-		if( g.y >= 512 ) g.y -= 1023;
-		if( g.y <= -512) g.y += 1023;
+		if( g.x >= 1024 ) g.x -= 2047;
+		if( g.x <= -1024) g.x += 2047;
+		if( g.y >= 1024 ) g.y -= 2047;
+		if( g.y <= -1024) g.y += 2047;
 		g.life -= input.delta;
 		if( g.life <= 0 )
 		{
