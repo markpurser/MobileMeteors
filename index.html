@@ -194,8 +194,8 @@
 		tileIdx = 0;
 		for (var row=0; row<6; row++) {
 			for (var col=0; col<12; col++) {
-				tile[tileIdx].x -= game.velocity.x;
-				tile[tileIdx].y -= game.velocity.y;
+				tile[tileIdx].x -= game.velocity.x * windowScale;
+				tile[tileIdx].y -= game.velocity.y * windowScale;
 				if(tile[tileIdx].x < scalarWorldToLocal(2048)) tile[tileIdx].x += scalarWorldToLocal(4096);
 				if(tile[tileIdx].x > scalarWorldToLocal(2048)) tile[tileIdx].x -= scalarWorldToLocal(4096);
 				if(tile[tileIdx].y < scalarWorldToLocal(1024)) tile[tileIdx].y += scalarWorldToLocal(2048);
